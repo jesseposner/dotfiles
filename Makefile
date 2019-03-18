@@ -10,3 +10,6 @@ TPM:
 
 fisher:
 	curl https://git.io/fisher --create-dirs -sLo ~/.config/fish/functions/fisher.fish
+
+spacefish:
+	fisher add matchai/spacefish
