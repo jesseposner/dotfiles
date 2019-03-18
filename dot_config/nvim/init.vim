@@ -59,3 +59,6 @@ set noshowmode
 let g:lightline = {
   \ 'colorscheme': 'onedark',
   \ }
+
+" Show whitespace as characters
+set list
