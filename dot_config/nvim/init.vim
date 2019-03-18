@@ -15,6 +15,8 @@ Plug 'airblade/vim-gitgutter'
 Plug 'neoclide/coc.nvim', {'tag': '*', 'do': 'yarn install'}
 Plug 'terryma/vim-multiple-cursors'
 Plug 'itchyny/lightline.vim'
+Plug 'Shougo/unite.vim'
+Plug 'Shougo/vimproc.vim', {'do' : 'make'}
 
 " Initialize plugin system
 call plug#end()
@@ -62,3 +64,30 @@ let g:lightline = {
 
 " Show whitespace as characters
 set list
+
+" UNITE.VIM
+call unite#custom#profile('searcher', 'context', {
+      \ 'start_insert' : 1,
+      \ 'update_time'  : 1,
+      \ 'filters'      : 'sorter_rank'
+      \})
+call unite#custom#source('file_rec/async,file_rec/git,file_rec/neovim', 'ignore_globs', [])
+call unite#custom#source('file_rec,file_rec/async,file_rec/git,file_rec/neovim', 'max_candidates', 1000)
+
+nnoremap <C-p> :Unite -toggle -profile-name=searcher -buffer-name=search file_rec/neovim<CR>
+nnoremap <C-b> :Unite -toggle -buffer-name=buffer buffer<CR>
+nnoremap <C-_> :Unite -toggle grep:. -buffer-name=grep-pwd<CR>
+nnoremap <C-\> :Unite -toggle grep -buffer-name=grep-buffer<CR>
+
+let g:unite_data_directory             = '~/tmp/unite-cache'
+let g:unite_source_grep_max_candidates = 200
+let g:unite_redraw_hold_candidates     = 50000
+let g:unite_source_rec_max_cache_files = 50000
+
+" grep
+let g:unite_source_grep_command       = 'ag'
+let g:unite_source_grep_default_opts  = '--nogroup --nocolor -S'
+let g:unite_source_grep_recursive_opt = ''
+" file_rec
+let g:unite_source_file_rec_max_cache_files = 0
+let g:unite_source_rec_async_command        = ['ag', '--follow', '--nocolor', '--nogroup', '-i', '-g', '.']
