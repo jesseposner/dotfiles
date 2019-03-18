@@ -19,3 +19,6 @@ set -gx EDITOR nvim
 
 # load rbenv
 status --is-interactive; and source (rbenv init -|psub)
+
+# vi mode
+fish_vi_key_bindings
