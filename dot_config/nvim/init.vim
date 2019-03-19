@@ -94,3 +94,6 @@ let g:unite_source_rec_async_command        = ['ag', '--follow', '--nocolor', '-
 
 " show line numbers
 set number
+
+" prettify json
+nnoremap <C-j> :%!jq<CR>
