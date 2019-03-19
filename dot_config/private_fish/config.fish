@@ -8,11 +8,8 @@ if not functions -q fisher
   fish -c fisher
 end
 
-# onedark color for VI mode
-set SPACEFISH_VI_MODE_COLOR abb2bf
-
-# don't show VI mode
-set SPACEFISH_VI_MODE_SHOW false
+# set spacefish prompts
+set SPACEFISH_PROMPT_ORDER time user dir host git package node ruby golang php rust haskell julia docker aws venv conda pyenv dotnet kubecontext exec_time line_sep battery jobs exit_code char
 
 # set default editor
 set -gx EDITOR nvim
