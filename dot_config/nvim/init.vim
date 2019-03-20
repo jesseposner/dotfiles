@@ -17,6 +17,7 @@ Plug 'terryma/vim-multiple-cursors'
 Plug 'itchyny/lightline.vim'
 Plug 'Shougo/unite.vim'
 Plug 'Shougo/vimproc.vim', {'do' : 'make'}
+Plug 'Chiel92/vim-autoformat'
 
 " Initialize plugin system
 call plug#end()
