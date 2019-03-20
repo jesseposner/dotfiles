@@ -20,6 +20,7 @@ Plug 'Shougo/vimproc.vim', {'do' : 'make'}
 Plug 'Chiel92/vim-autoformat'
 Plug 'scrooloose/nerdcommenter'
 Plug 'svermeulen/vim-cutlass'
+Plug 'christoomey/vim-tmux-navigator'
 
 " Initialize plugin system
 call plug#end()
