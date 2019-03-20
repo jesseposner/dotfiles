@@ -41,8 +41,8 @@ colorscheme onedark
 " change the mapleader from \ to ,
 let mapleader=","
 
-nmap <leader>n :NERDTreeToggle<cr>
-nmap <leader>f :FZF<cr>
+nmap <leader>n :NERDTreeToggle<CR>
+nmap <leader>f :FZF<CR>
 
 " Use tab for trigger completion with characters ahead and navigate.
 " Use command ':verbose imap <tab>' to make sure tab is not mapped by other plugin.
