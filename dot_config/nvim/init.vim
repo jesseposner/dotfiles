@@ -19,6 +19,7 @@ Plug 'Shougo/unite.vim'
 Plug 'Shougo/vimproc.vim', {'do' : 'make'}
 Plug 'Chiel92/vim-autoformat'
 Plug 'scrooloose/nerdcommenter'
+Plug 'svermeulen/vim-cutlass'
 
 " Initialize plugin system
 call plug#end()
