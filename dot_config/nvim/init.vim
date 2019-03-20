@@ -113,3 +113,8 @@ if has("clipboard")
     set clipboard+=unnamedplus
   endif
 endif
+
+" Use <C-S> to clear the highlighting of :set hlsearch.
+if maparg('<C-S>', 'n') ==# ''
+  nnoremap <silent> <C-S> :nohlsearch<C-R>=has('diff')?'<Bar>diffupdate':''<CR><CR><C-S>
+endif
