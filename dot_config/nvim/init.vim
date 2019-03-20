@@ -103,3 +103,12 @@ nnoremap <C-j> :%!jq<CR>
 
 " Add spaces after comment delimiters by default
 let g:NERDSpaceDelims = 1
+
+" yank to clipboard
+if has("clipboard")
+  set clipboard=unnamed " copy to the system clipboard
+
+  if has("unnamedplus") " X11 support
+    set clipboard+=unnamedplus
+  endif
+endif
