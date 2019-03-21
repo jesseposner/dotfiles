@@ -118,3 +118,10 @@ endif
 if maparg('<C-S>', 'n') ==# ''
   nnoremap <silent> <C-S> :nohlsearch<C-R>=has('diff')?'<Bar>diffupdate':''<CR><CR><C-S>
 endif
+
+" Map 'cut' to m (move) d, to account for cutlass.vim
+nnoremap m d
+xnoremap m d
+
+nnoremap mm dd
+nnoremap M D
