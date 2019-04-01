@@ -13,3 +13,6 @@ fisher:
 
 spacefish:
 	fisher add matchai/spacefish
+
+chezmoi:
+	brew install twpayne/taps/chezmoi
