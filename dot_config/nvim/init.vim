@@ -125,3 +125,7 @@ xnoremap m d
 
 nnoremap mm dd
 nnoremap M D
+
+" spaces for tabs
+set tabstop=2
+set shiftwidth=2
