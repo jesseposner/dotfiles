@@ -136,3 +136,6 @@ set noswapfile
 set nobackup
 set nowritebackup
 set noundofile
+
+" Find ctags in .git
+set tags+=.git/tags
