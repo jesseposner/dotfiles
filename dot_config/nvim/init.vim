@@ -129,6 +129,7 @@ nnoremap M D
 " spaces for tabs
 set tabstop=2
 set shiftwidth=2
+set expandtab
 
 " Turn off all swaps and backups
 set noswapfile
