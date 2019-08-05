@@ -12,7 +12,7 @@ Plug 'scrooloose/nerdtree'
 Plug 'sheerun/vim-polyglot'
 Plug 'w0rp/ale'
 Plug 'airblade/vim-gitgutter'
-Plug 'neoclide/coc.nvim', {'tag': '*', 'do': 'yarn install'}
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
 Plug 'terryma/vim-multiple-cursors'
 Plug 'itchyny/lightline.vim'
 Plug 'Shougo/unite.vim'
@@ -21,9 +21,21 @@ Plug 'Chiel92/vim-autoformat'
 Plug 'scrooloose/nerdcommenter'
 Plug 'svermeulen/vim-cutlass'
 Plug 'christoomey/vim-tmux-navigator'
+Plug 'xuhdev/vim-latex-live-preview', { 'for': 'tex' }
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+else
+  Plug 'Shougo/deoplete.nvim'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+endif
+Plug 'deoplete-plugins/deoplete-go', { 'do': 'make'}
 
 " Initialize plugin system
 call plug#end()
+
+let g:deoplete#enable_at_startup = 1
 
 if (has("nvim"))
   "For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
@@ -139,3 +151,35 @@ set noundofile
 
 " Find ctags in .git
 set tags+=.git/tags
+
+" vim-latex-live-preview
+let g:livepreview_previewer = 'open -a Preview'
+
+" Golang
+let g:go_auto_type_info = 1
+let g:go_auto_sameids = 1
+
+let g:go_highlight_array_whitespace_error = 1
+let g:go_highlight_chan_whitespace_error = 1
+let g:go_highlight_extra_types = 1
+let g:go_highlight_space_tab_error = 1
+let g:go_highlight_trailing_whitespace_error = 1
+let g:go_highlight_operators = 1
+let g:go_highlight_functions = 1
+let g:go_highlight_function_parameters = 1
+let g:go_highlight_function_calls = 1
+let g:go_highlight_types = 1
+let g:go_highlight_fields = 1
+let g:go_highlight_build_constraints = 1
+let g:go_highlight_generate_tags = 1
+let g:go_highlight_string_spellcheck = 1
+let g:go_highlight_format_strings = 1
+let g:go_highlight_variable_declarations = 1
+let g:go_highlight_variable_assignments = 1
+
+" Disable deoplete when in multi cursor mode
+function! Multiple_cursors_before()
+    let b:deoplete_disable_auto_complete = 1
+endfunctionfunction! Multiple_cursors_after()
+    let b:deoplete_disable_auto_complete = 0
+endfunction
