@@ -155,8 +155,9 @@ set tags+=.git/tags
 let g:livepreview_previewer = 'open -a Preview'
 
 " Golang
-let g:go_auto_type_info = 1
+let g:go_auto_type_info = 0
 let g:go_auto_sameids = 0
+let g:go_fmt_command = "goimports"
 
 let g:go_highlight_array_whitespace_error = 1
 let g:go_highlight_chan_whitespace_error = 1
