@@ -176,3 +176,6 @@ let g:go_highlight_format_strings = 1
 let g:go_highlight_variable_declarations = 1
 let g:go_highlight_variable_assignments = 1
 
+" replace currently selected text with default register
+" without yanking it
+vnoremap p "_dP
