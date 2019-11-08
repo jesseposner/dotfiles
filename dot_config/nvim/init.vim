@@ -22,19 +22,10 @@ Plug 'svermeulen/vim-cutlass'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'xuhdev/vim-latex-live-preview', { 'for': 'tex' }
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-else
-  Plug 'Shougo/deoplete.nvim'
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
-endif
-Plug 'deoplete-plugins/deoplete-go', { 'do': 'make'}
 
 " Initialize plugin system
 call plug#end()
 
-let g:deoplete#enable_at_startup = 1
 
 if (has("nvim"))
   "For Neovim 0.1.3 and 0.1.4 < https://github.com/neovim/neovim/pull/2198 >
