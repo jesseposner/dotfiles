@@ -179,6 +179,7 @@ let g:go_highlight_string_spellcheck = 1
 let g:go_highlight_format_strings = 1
 let g:go_highlight_variable_declarations = 1
 let g:go_highlight_variable_assignments = 1
+let g:go_fmt_fail_silently = 1
 
 " replace currently selected text with default register
 " without yanking it
