@@ -9,7 +9,6 @@ Plug 'joshdick/onedark.vim'
 Plug '/usr/local/opt/fzf'
 Plug 'junegunn/fzf.vim'
 Plug 'scrooloose/nerdtree'
-Plug 'sheerun/vim-polyglot'
 Plug 'w0rp/ale'
 Plug 'airblade/vim-gitgutter'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
@@ -22,6 +21,11 @@ Plug 'svermeulen/vim-cutlass'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'xuhdev/vim-latex-live-preview', { 'for': 'tex' }
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug 'janko/vim-test'
+Plug 'jgdavey/tslime.vim'
+Plug 'sheerun/vim-polyglot'
+Plug 'tpope/vim-surround'
+Plug 'tpope/vim-repeat'
 
 " Initialize plugin system
 call plug#end()
