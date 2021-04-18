@@ -1,3 +1,6 @@
+" ALE and coc.nvim compatability
+let g:ale_disable_lsp = 1
+
 " Specify a directory for plugins
 " - For Neovim: ~/.local/share/nvim/plugged
 " - Avoid using standard Vim directory names like 'plugin'
@@ -15,17 +18,16 @@ Plug 'neoclide/coc.nvim', {'branch': 'release'}
 Plug 'itchyny/lightline.vim'
 Plug 'Shougo/unite.vim'
 Plug 'Shougo/vimproc.vim', {'do' : 'make'}
-Plug 'Chiel92/vim-autoformat'
 Plug 'scrooloose/nerdcommenter'
 Plug 'svermeulen/vim-cutlass'
 Plug 'christoomey/vim-tmux-navigator'
-Plug 'xuhdev/vim-latex-live-preview', { 'for': 'tex' }
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'janko/vim-test'
-Plug 'jgdavey/tslime.vim'
 Plug 'sheerun/vim-polyglot'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-repeat'
+" requires nodejs and yarn
+Plug 'iamcco/markdown-preview.nvim', { 'do': 'cd app && yarn install'  }
 
 " Initialize plugin system
 call plug#end()
@@ -144,11 +146,6 @@ xnoremap m d
 nnoremap mm dd
 nnoremap M D
 
-" spaces for tabs
-set tabstop=2
-set shiftwidth=2
-set expandtab
-
 " Turn off all swaps and backups
 set noswapfile
 set nobackup
@@ -157,9 +154,6 @@ set noundofile
 
 " Find ctags in .git
 set tags+=.git/tags
-
-" vim-latex-live-preview
-let g:livepreview_previewer = 'open -a Preview'
 
 " Golang
 let g:go_auto_type_info = 0
