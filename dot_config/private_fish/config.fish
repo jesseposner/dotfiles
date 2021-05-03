@@ -22,3 +22,6 @@ status --is-interactive; pyenv init - | source
 
 # vi mode
 fish_vi_key_bindings
+
+# disable blinking cursor
+set fish_cursor_unknown block
