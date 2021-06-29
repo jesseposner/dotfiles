@@ -18,7 +18,8 @@ set -gx EDITOR nvim
 status --is-interactive; and source (rbenv init -|psub)
 
 # pyenv
-status --is-interactive; pyenv init - | source
+status is-login; and pyenv init --path | source
+pyenv init - | source
 
 # vi mode
 fish_vi_key_bindings
