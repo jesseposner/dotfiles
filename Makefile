@@ -5,7 +5,7 @@
 brew:
 	brew install fish neovim tmux starship chezmoi
 	brew install fzf ripgrep tree-sitter-cli jq git-delta zoxide
-	brew install rbenv ruby-build rustup uv
+	brew install rbenv ruby-build uv
 
 # Font used by Alacritty and Neovim
 font:
@@ -19,6 +19,10 @@ terminal:
 tpm:
 	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
+# Rust
+rust:
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
 # Set fish as default shell
 shell:
 	echo /opt/homebrew/bin/fish | sudo tee -a /etc/shells
@@ -29,7 +33,7 @@ nvim:
 	nvim --headless "+Lazy install" +qa
 
 # Everything for a fresh machine
-all: brew font terminal tpm shell nvim
+all: brew font terminal tpm rust shell nvim
 	@echo "Done. Open Alacritty and run: tmux, then prefix+I to install tmux plugins."
 
-.PHONY: brew font terminal tpm shell nvim all
+.PHONY: brew font terminal tpm rust shell nvim all
