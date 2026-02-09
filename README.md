@@ -24,6 +24,10 @@ chezmoi apply
 chezmoi cd && make all
 ```
 
+## Keybindings
+
+See [KEYBINDINGS.md](KEYBINDINGS.md) for the full cheatsheet — tmux, Neovim, Fish, and cross-tool navigation.
+
 ## Update
 
 ```sh
