@@ -1,7 +1,7 @@
 [user]
-	email = jesse.posner@gmail.com
-	name = Jesse Posner
-	signingkey = 322C1E6648EF0F22
+	email = {{ .email | quote }}
+	name = {{ .name | quote }}
+	signingkey = {{ .signingkey | quote }}
 [core]
 	editor = nvim
 [init]
