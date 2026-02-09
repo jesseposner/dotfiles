@@ -53,3 +53,8 @@ option_as_alt = "Both"
 [terminal.shell]
 program = "/opt/homebrew/bin/fish"
 args = ["--login"]
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001b\r"
