@@ -1,0 +1,16 @@
+[user]
+	email = jesse.posner@gmail.com
+	name = Jesse Posner
+	signingkey = 322C1E6648EF0F22
+[core]
+	editor = nvim
+[init]
+	defaultBranch = main
+[push]
+	autoSetupRemote = true
+[diff]
+	algorithm = histogram
+[commit]
+	gpgsign = true
+[tag]
+	gpgSign = true
