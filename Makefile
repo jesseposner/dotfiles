@@ -4,7 +4,7 @@
 # Core tools required by the dotfiles
 brew:
 	brew install fish neovim tmux starship chezmoi
-	brew install fzf ripgrep tree-sitter-cli jq
+	brew install fzf ripgrep tree-sitter-cli jq git-delta zoxide
 	brew install rbenv ruby-build rustup uv
 
 # Font used by Alacritty and Neovim
