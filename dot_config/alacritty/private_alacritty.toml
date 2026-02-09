@@ -1,0 +1,55 @@
+[colors.primary]
+background = "#282c34"
+foreground = "#abb2bf"
+
+[colors.cursor]
+cursor = "#528bff"
+text = "CellBackground"
+
+[colors.selection]
+background = "#3e4451"
+text = "CellForeground"
+
+[colors.normal]
+black = "#5c6370"
+red = "#e06c75"
+green = "#98c379"
+yellow = "#e5c07b"
+blue = "#61afef"
+magenta = "#c678dd"
+cyan = "#56b6c2"
+white = "#828997"
+
+[colors.bright]
+black = "#7f848e"
+red = "#e06c75"
+green = "#98c379"
+yellow = "#e5c07b"
+blue = "#61afef"
+magenta = "#c678dd"
+cyan = "#56b6c2"
+white = "#d7dae0"
+
+[colors.line_indicator]
+foreground = "#61afef"
+background = "#3e4451"
+
+[colors.footer_bar]
+foreground = "#282c34"
+background = "#abb2bf"
+
+[env]
+TERM = "alacritty"
+
+[font]
+size = 16.0
+
+[font.normal]
+family = "MesloLGS Nerd Font Mono"
+
+[window]
+option_as_alt = "Both"
+
+[terminal.shell]
+program = "/opt/homebrew/bin/fish"
+args = ["--login"]
