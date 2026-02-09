@@ -26,5 +26,8 @@ status --is-interactive; and source (rbenv init -|psub)
 # OrbStack
 source ~/.orbstack/shell/init2.fish 2>/dev/null || :
 
+# Zoxide (smart cd)
+zoxide init fish | source
+
 # Starship prompt
 starship init fish | source
