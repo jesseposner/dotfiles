@@ -17,6 +17,10 @@ opt.backup = false
 opt.writebackup = false
 opt.undofile = true
 
+-- Disable netrw (nvim-tree replaces it)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Completion menu
 opt.shortmess:append("c")
 
