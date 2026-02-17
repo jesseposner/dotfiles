@@ -10,20 +10,26 @@ fish_vi_key_bindings
 # Disable blinking cursor
 set fish_cursor_unknown block
 
-# Homebrew
-eval (/opt/homebrew/bin/brew shellenv)
+# Homebrew (macOS only)
+if test -x /opt/homebrew/bin/brew
+    eval (/opt/homebrew/bin/brew shellenv)
+end
 
 # PATH
 fish_add_path $HOME/.local/bin
-fish_add_path "$HOME/.volta/bin"
-set -gx VOLTA_HOME "$HOME/.volta"
 
-# rbenv
-status --is-interactive; and source (rbenv init -|psub)
+# Volta (if installed)
+if test -d "$HOME/.volta/bin"
+    fish_add_path "$HOME/.volta/bin"
+    set -gx VOLTA_HOME "$HOME/.volta"
+end
 
-# Cargo/Rust (loaded via conf.d/rustup.fish)
+# rbenv (if installed)
+if command -q rbenv
+    status --is-interactive; and source (rbenv init -|psub)
+end
 
-# OrbStack
+# OrbStack (macOS only)
 source ~/.orbstack/shell/init2.fish 2>/dev/null || :
 
 # Zoxide (smart cd)
