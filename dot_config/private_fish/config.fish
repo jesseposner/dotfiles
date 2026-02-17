@@ -4,6 +4,9 @@ set -g fish_greeting
 # Default editor
 set -gx EDITOR nvim
 
+# GPG signing (for git commits)
+set -gx GPG_TTY (tty)
+
 # vi mode
 fish_vi_key_bindings
 
