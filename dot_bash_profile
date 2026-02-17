@@ -1,5 +1,5 @@
-# Homebrew
-eval "$(/opt/homebrew/bin/brew shellenv)"
+# Homebrew (macOS only)
+[[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # Source .bashrc for interactive config
 [[ -f ~/.bashrc ]] && source ~/.bashrc
