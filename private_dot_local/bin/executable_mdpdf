@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node ~/.local/share/mdpdf/md2pdf.mjs "$@"

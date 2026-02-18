@@ -32,8 +32,12 @@ shell:
 nvim:
 	nvim --headless "+Lazy install" +qa
 
+# Markdown to PDF tool (puppeteer + marked)
+mdpdf:
+	cd ~/.local/share/mdpdf && npm install
+
 # Everything for a fresh machine
-all: brew font terminal tpm rust shell nvim
+all: brew font terminal tpm rust shell nvim mdpdf
 	@echo "Done. Open Alacritty and run: tmux, then prefix+I to install tmux plugins."
 
-.PHONY: brew font terminal tpm rust shell nvim all
+.PHONY: brew font terminal tpm rust shell nvim mdpdf all

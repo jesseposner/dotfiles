@@ -11,6 +11,7 @@ macOS dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 - **Starship** — cross-shell prompt (fish, bash, zsh) with shell name indicator
 - **Git** — GPG-signed commits, delta syntax-highlighted diffs, histogram algorithm
 - **Bash / Zsh** — minimal configs with Starship and `EDITOR=nvim`
+- **mdpdf** — custom markdown-to-PDF converter with Splendor editorial theme
 
 ## Install
 
