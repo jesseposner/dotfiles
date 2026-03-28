@@ -1,0 +1,46 @@
+# Font
+font-family = MesloLGS Nerd Font Mono
+font-size = 16
+font-thicken = true
+
+# Shell
+command = /opt/homebrew/bin/fish --login
+
+# Option as Alt
+macos-option-as-alt = true
+
+# Theme
+theme = Atom One Dark
+cursor-color = 528bff
+
+# Window
+window-padding-x = 12
+window-padding-y = 10
+macos-titlebar-style = tabs
+
+# Contrast safety net
+minimum-contrast = 1.1
+
+# Quick terminal (Cmd+` globally)
+keybind = global:cmd+grave_accent=toggle_quick_terminal
+quick-terminal-position = top
+quick-terminal-size = 40%
+quick-terminal-autohide = true
+
+# Prompt navigation (shell integration)
+keybind = ctrl+shift+up=jump_to_prompt:-1
+keybind = ctrl+shift+down=jump_to_prompt:1
+
+# Clipboard
+clipboard-trim-trailing-spaces = true
+clipboard-paste-protection = true
+
+# SSH compatibility
+ssh-env = true
+ssh-terminfo = true
+
+# Scrollback
+scrollback-limit = 10000000
+
+# Keybindings
+keybind = shift+enter=text:\x1b\x0d

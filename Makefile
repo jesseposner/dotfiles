@@ -7,13 +7,13 @@ brew:
 	brew install fzf ripgrep tree-sitter-cli jq git-delta zoxide
 	brew install rbenv ruby-build uv
 
-# Font used by Alacritty and Neovim
+# Font used by Ghostty and Neovim
 font:
 	brew install --cask font-meslo-lg-nerd-font
 
 # Terminal
 terminal:
-	brew install --cask alacritty
+	brew install --cask ghostty
 
 # Tmux Plugin Manager
 tpm:
@@ -38,6 +38,6 @@ mdpdf:
 
 # Everything for a fresh machine
 all: brew font terminal tpm rust shell nvim mdpdf
-	@echo "Done. Open Alacritty and run: tmux, then prefix+I to install tmux plugins."
+	@echo "Done. Open Ghostty and run: tmux, then prefix+I to install tmux plugins."
 
 .PHONY: brew font terminal tpm rust shell nvim mdpdf all

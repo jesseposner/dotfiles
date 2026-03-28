@@ -6,7 +6,7 @@ macOS dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 
 - **Neovim** — modular Lua config with lazy.nvim, native LSP, blink.cmp, treesitter, fzf-lua, conform.nvim
 - **Fish** — vi mode, OneDark syntax theme, Starship prompt, zoxide
-- **Alacritty** — OneDark color scheme, MesloLGS Nerd Font Mono
+- **Ghostty** — Atom One Dark theme, MesloLGS Nerd Font Mono, quick terminal, shell integration
 - **tmux** — C-a prefix, vi mode, OneDark status bar with powerline separators, resurrect + continuum
 - **Starship** — cross-shell prompt (fish, bash, zsh) with shell name indicator
 - **Git** — GPG-signed commits, delta syntax-highlighted diffs, histogram algorithm
