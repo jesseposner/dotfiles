@@ -57,8 +57,12 @@ Vi-mode everywhere. Leader key is `,` in Neovim, prefix is `Ctrl-a` in tmux.
 | `C-a (` / `C-a )` | Previous / next session |
 | `C-a C-s` | Save session (resurrect) |
 | `C-a C-r` | Restore session (resurrect) |
+| `C-a S` | Snapshot Claude Code session ids now |
 
-Sessions auto-save every 15 minutes via continuum.
+Sessions auto-save every 15 minutes via continuum. Each save also snapshots the
+exact Claude Code session id of every pane; on restore (and on boot) those panes
+are re-resumed to their conversations automatically. See
+`~/.config/tmux/claude-sessions.README.md`.
 
 ---
 

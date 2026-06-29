@@ -6,6 +6,7 @@ brew:
 	brew install fish neovim tmux starship chezmoi
 	brew install fzf ripgrep tree-sitter-cli jq git-delta zoxide
 	brew install rbenv ruby-build uv
+	brew install python3  # tmux Claude-session persistence hooks call /opt/homebrew/bin/python3
 
 # Font used by Ghostty and Neovim
 font:
