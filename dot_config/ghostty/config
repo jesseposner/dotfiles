@@ -16,7 +16,7 @@ cursor-color = 528bff
 # Window
 window-padding-x = 12
 window-padding-y = 10
-macos-titlebar-style = tabs
+macos-titlebar-style = transparent
 
 # Contrast safety net
 minimum-contrast = 1.1
@@ -35,9 +35,8 @@ keybind = ctrl+shift+down=jump_to_prompt:1
 clipboard-trim-trailing-spaces = true
 clipboard-paste-protection = true
 
-# SSH compatibility
-ssh-env = true
-ssh-terminfo = true
+# SSH terminfo auto-install on remote hosts
+shell-integration-features = cursor,no-sudo,title,ssh-env,ssh-terminfo,path
 
 # Scrollback
 scrollback-limit = 10000000
