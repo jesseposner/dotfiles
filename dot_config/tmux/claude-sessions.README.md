@@ -5,6 +5,36 @@ window/pane/layout/cwd tree and auto-restore on boot). This adds the one thing
 resurrect can't: re-attaching each restored pane to its **exact** Claude Code
 conversation.
 
+## Recovery after a reboot
+
+The happy path is one command:
+
+1. Open the terminal.
+2. Run `tmux`.
+
+Starting the tmux server triggers continuum, which rebuilds the
+window/pane/layout/cwd tree; the post-restore hook then re-resumes every Claude
+pane to its exact conversation (staggered over ~20s). Done.
+
+**Verify it worked:** `cat ~/.config/tmux/claude-sessions/hook.log` — look for a
+recent `[restore] launched N (R resumed ...)` line.
+
+**Fallbacks, in escalating order:**
+
+- Layout came back but Claude panes are bare shells (hook didn't fire) ->
+  run it by hand: `python3 ~/.config/tmux/claude-sessions.py restore`
+- Nothing restored at all (blank tmux) -> trigger resurrect manually with
+  `prefix + C-r`; that rebuilds the layout *and* fires the resume hook.
+- Total fallback -> the manifest is plain JSON with every pane's id, title, and
+  cwd: `cat ~/.config/tmux/claude-sessions/latest.json`. Worst case, resume the
+  few you care about by hand. The mapping cannot be lost.
+
+**Before a planned reboot:** hit `prefix + S` to snapshot the latest state
+(otherwise the manifest is at most ~15 min stale, usually fine).
+
+Note: tmux does not auto-start at login unless `@continuum-boot 'on'` is set
+(it isn't by default) -- you start tmux yourself.
+
 ## How it works
 
 - `claude-sessions.py snapshot` detects every tmux pane running Claude Code,
