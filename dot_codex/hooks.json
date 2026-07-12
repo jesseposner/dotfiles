@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/homebrew/bin/python3 /Users/jesse/.config/tmux/claude-sessions.py codex-hook",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

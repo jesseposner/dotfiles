@@ -1,9 +1,11 @@
-# claude-sessions: persist & restore Claude Code sessions across reboots
+# claude-sessions: persist Claude Code + Codex CLI sessions across reboots
 
-Layered on top of tmux-resurrect + tmux-continuum (which already persist the
-window/pane/layout/cwd tree and auto-restore on boot). This adds the one thing
-resurrect can't: re-attaching each restored pane to its **exact** Claude Code
-conversation.
+Layered on top of tmux-resurrect + tmux-continuum, which already persist the
+window/pane/layout/cwd tree. This adds the one thing resurrect cannot:
+re-attaching each restored pane to its **exact agent conversation**.
+
+The script and state directory keep their original `claude-sessions` name for
+backward compatibility, but manifests now contain both Claude and Codex panes.
 
 ## Recovery after a reboot
 
@@ -13,74 +15,111 @@ The happy path is one command:
 2. Run `tmux`.
 
 Starting the tmux server triggers continuum, which rebuilds the
-window/pane/layout/cwd tree; the post-restore hook then re-resumes every Claude
-pane to its exact conversation (staggered over ~20s). Done.
+window/pane/layout/cwd tree. The post-restore hook then resumes every Claude and
+Codex pane to its exact conversation, launching them 0.4 seconds apart. Done.
 
 **Verify it worked:** `cat ~/.config/tmux/claude-sessions/hook.log` — look for a
-recent `[restore] launched N (R resumed ...)` line.
+recent line like `[restore] launched N (R resumed: C Claude, D Codex; F fresh)`.
 
 **Fallbacks, in escalating order:**
 
-- Layout came back but Claude panes are bare shells (hook didn't fire) ->
-  run it by hand: `python3 ~/.config/tmux/claude-sessions.py restore`
+- Layout came back but agent panes are bare shells (hook did not fire) -> run
+  it by hand:
+  `python3 ~/.config/tmux/claude-sessions.py restore`
 - Nothing restored at all (blank tmux) -> trigger resurrect manually with
   `prefix + C-r`; that rebuilds the layout *and* fires the resume hook.
-- Total fallback -> the manifest is plain JSON with every pane's id, title, and
-  cwd: `cat ~/.config/tmux/claude-sessions/latest.json`. Worst case, resume the
-  few you care about by hand. The mapping cannot be lost.
+- Total fallback -> inspect the plain-JSON manifest, which records each pane's
+  agent, session id, title, and cwd:
+  `cat ~/.config/tmux/claude-sessions/latest.json`
 
-**Before a planned reboot:** hit `prefix + S` to snapshot the latest state
-(otherwise the manifest is at most ~15 min stale, usually fine).
+**Before a planned reboot:** hit `prefix + S`. This runs a full resurrect save;
+the post-save hook snapshots the matching Claude and Codex session ids.
 
 Note: tmux does not auto-start at login unless `@continuum-boot 'on'` is set
-(it isn't by default) -- you start tmux yourself.
+(it is not by default) — you start tmux yourself.
 
 ## How it works
 
-- `claude-sessions.py snapshot` detects every tmux pane running Claude Code,
-  resolves its exact session id, and writes a manifest to
-  `claude-sessions/latest.json` (plus timestamped history, last 30 kept).
-- `claude-sessions.py restore` reads the latest manifest and, for each Claude
-  pane that came back as a bare shell, injects `claude --resume <id>`
-  (staggered, to avoid a thundering herd of transcript loads at login). A pane
-  whose recorded session has no transcript on disk relaunches bare `claude`.
+- `claude-sessions.py snapshot` detects every tmux pane running Claude Code or
+  Codex, resolves its exact session id, and writes
+  `claude-sessions/latest.json` plus timestamped history (last 30 kept).
+- `claude-sessions.py restore` reads that manifest and, for every recorded pane
+  that came back as a bare shell, injects either `claude --resume <id>` or
+  `codex resume <id>`.
+- If a recorded transcript no longer exists, restore starts that agent fresh
+  rather than handing it a dead resume id.
+- Version-1 Claude-only manifests remain restorable; a record without an
+  `agent` field is treated as Claude.
 
 ### Exact session-id detection (the hard part)
 
-Every Claude process injects `CLAUDE_CODE_SESSION_ID` into the environment of
-its child processes (MCP servers, Bash-tool shells). Those children often have
-no controlling tty, so we climb the ppid chain from any env-bearing process to
-its `claude` ancestor, read that ancestor's tty, and join to `tmux list-panes`
-by tty. This disambiguates multiple Claude panes sharing one cwd, which a
-newest-jsonl-by-mtime heuristic cannot (it collapses them to the single
-most-recently-written session).
+**Claude Code:** Claude injects `CLAUDE_CODE_SESSION_ID` into its child
+processes (MCP servers, Bash-tool shells). Those children often have no
+controlling tty, so the script climbs their ppid chain to the `claude` ancestor,
+reads that ancestor's tty, and joins it to `tmux list-panes`.
 
-## Wiring (in ~/.tmux.conf)
+**Codex CLI:** Codex's `SessionStart` hook provides the current `session_id` and
+transcript path. A tiny hook records those values against the exact inherited
+`TMUX_PANE`, along with the live Codex master pid so stale pane mappings are
+rejected.
 
-- `@resurrect-hook-post-save-all`    -> snapshot (fires with every continuum
-  save, ~15 min, and manual `prefix + C-s`)
-- `@resurrect-hook-post-restore-all` -> restore (fires after continuum rebuilds
-  the layout on boot)
-- `prefix + S` -> manual snapshot on demand
+For Codex sessions that were already running before the hook was installed or
+trusted, snapshot has two exact fallbacks:
 
-So continuum keeps the manifest fresh; on reboot, continuum restores the layout
-and the post-restore hook re-resumes every Claude pane. Fully automatic.
+1. Inspect rollout files held open by the live Codex master, ignoring subagent
+   rollouts and accepting a result only when the top-level conversation is
+   unambiguous.
+2. Read an explicit UUID from `codex resume <id>` in the process argv.
+
+This avoids newest-transcript-by-mtime or newest-in-cwd guesses, both of which
+collapse multiple agent panes sharing the same cwd onto one conversation.
+
+## Wiring
+
+In `~/.tmux.conf`:
+
+- `@resurrect-hook-post-save-all` -> snapshot after every continuum/resurrect
+  save (about every 15 minutes, plus manual saves)
+- `@resurrect-hook-post-restore-all` -> resume after resurrect rebuilds layout
+- `prefix + S` -> full manual resurrect save; the post-save hook snapshots
+  agent ids in lockstep with that exact layout
+
+In `~/.codex/hooks.json`:
+
+- `SessionStart` for `startup|resume|clear|compact` ->
+  `claude-sessions.py codex-hook`
+
+Codex requires one-time review of a new or changed non-managed hook. Start a
+Codex session, run `/hooks`, inspect this command, and trust it. Until then the
+open-transcript fallback still lets snapshots detect currently running Codex
+sessions.
 
 ## Manual use / testing
 
-    python3 claude-sessions.py list                 # show live detection
-    python3 claude-sessions.py snapshot             # write the manifest now
-    python3 claude-sessions.py restore --dry-run    # show what restore would do
-    CLAUDE_SESSIONS_MANIFEST=/tmp/x.json python3 claude-sessions.py restore   # test against a synthetic manifest
-    CLAUDE_RESTORE_STAGGER=0.4                       # seconds between launches (default 0.4)
+    python3 ~/.config/tmux/claude-sessions.py list
+    python3 ~/.config/tmux/claude-sessions.py snapshot
+    python3 ~/.config/tmux/claude-sessions.py restore --dry-run
+    AGENT_SESSIONS_MANIFEST=/tmp/x.json python3 ~/.config/tmux/claude-sessions.py restore --dry-run
+    AGENT_RESTORE_STAGGER=0.4 python3 ~/.config/tmux/claude-sessions.py restore
+
+For isolated tests, set `AGENT_SESSIONS_STATE_DIR=/tmp/agent-sessions`; this
+redirects the manifest history and Codex registry as well as `latest.json`.
+The older `CLAUDE_SESSIONS_MANIFEST` and `CLAUDE_RESTORE_STAGGER` overrides are
+still accepted.
 
 ## Notes / gotchas
 
-- Hooks use absolute paths (`/opt/homebrew/bin/python3`) because resurrect hooks
-  run with a minimal PATH. If Homebrew's python moves, update the paths in
-  ~/.tmux.conf.
-- Log: `claude-sessions/hook.log` (append-only, one line per save/restore).
-- Restore never clobbers a pane already running something (claude, nvim, etc.).
+- Hooks use absolute paths (`/opt/homebrew/bin/python3`) because resurrect and
+  Codex hooks can run with a minimal PATH. If Homebrew's Python moves, update
+  both `~/.tmux.conf` and `~/.codex/hooks.json`.
+- Log: `~/.config/tmux/claude-sessions/hook.log` (append-only, one line per
+  tmux save/restore).
+- Codex registry: `~/.config/tmux/claude-sessions/codex-registry.json` (bounded
+  to the 200 most recently updated pane ids).
+- Restore never clobbers a pane already running something (Claude, Codex, nvim,
+  etc.).
 - Restore deliberately does **not** title-match: a stale tmux pane title could
   resume the wrong conversation, which is worse than starting fresh.
-- To disable: remove the two `@resurrect-hook-*` lines from ~/.tmux.conf.
+- To disable tmux persistence, remove the two `@resurrect-hook-*` lines from
+  `~/.tmux.conf`. To disable Codex registration, remove the `SessionStart` hook
+  from `~/.codex/hooks.json`.
