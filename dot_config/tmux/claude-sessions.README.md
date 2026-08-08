@@ -42,7 +42,22 @@ Note: tmux does not auto-start at login unless `@continuum-boot 'on'` is set
 
 - `claude-sessions.py snapshot` detects every tmux pane running Claude Code or
   Codex, resolves its exact session id, and writes
-  `claude-sessions/latest.json` plus timestamped history (last 30 kept).
+  `claude-sessions/latest.json` plus timestamped history (everything newer
+  than 7 days is kept, floor of 30 — the manifest that matters is the one
+  written just before a disaster, and the loss may not be noticed for days).
+- The manifest also captures every window's name, layout string, and
+  automatic-rename setting (one atomic `list-windows` call). Capture only —
+  resurrect remains the restore machinery — but it makes the manifest
+  self-sufficient: if every resurrect save is corrupt, the full workspace
+  shape is still in one JSON file and can be replayed with plain tmux
+  commands.
+- `restore` pins the manifest it acted on to `claude-sessions/restored-from.json`
+  before launching anything. Later snapshots overwrite latest.json with the
+  post-restore workspace; the pin preserves the boot-time truth. It also
+  audits itself: recorded panes with no home in the restored layout are
+  counted, and a nonzero count logs a `[restore] WARNING` naming the pinned
+  manifest and the rerun command — a truncated layout announces itself
+  instead of hiding behind a shrunken latest.json.
 - `claude-sessions.py restore` reads that manifest and, for every recorded pane
   that came back as a bare shell, injects either `claude --resume <id>` or
   `codex resume <id>`.

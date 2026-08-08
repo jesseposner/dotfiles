@@ -59,7 +59,8 @@ CLAUDE_PROJECTS = os.path.join(HOME, ".claude", "projects")
 CODEX_SESSIONS = os.path.join(HOME, ".codex", "sessions")
 CODEX_REGISTRY = os.path.join(STATE_DIR, "codex-registry.json")
 SNAPSHOT_LOCK = os.path.join(STATE_DIR, "snapshot.lock")
-KEEP_HISTORY = 30  # timestamped manifests to retain
+KEEP_HISTORY = 30  # floor: never keep fewer than this many manifests
+KEEP_DAYS = 7  # retain all manifests newer than this, regardless of count
 KEEP_CODEX_REGISTRY = 200  # stale tmux pane ids are harmless, but bound the file
 SETTLE_SECONDS = 1.0  # let resurrect-restored shells reach a prompt first
 STAGGER_SECONDS = float(
@@ -645,6 +646,38 @@ def snapshot() -> int:
         return snapshot_locked()
 
 
+def capture_windows() -> list[dict]:
+    """Window names, layouts, and rename settings, via a single tmux call.
+
+    This makes the manifest self-sufficient: resurrect's save is assembled
+    from many forked subprocesses and can truncate silently on a constrained
+    machine, but the manifest is written atomically — so the workspace shape
+    recorded here survives even if every resurrect save goes corrupt. Capture
+    only; resurrect remains the restore machinery.
+    """
+    fmt = "\t".join(
+        (
+            "#{session_name}",
+            "#{window_index}",
+            "#{window_name}",
+            "#{window_layout}",
+            "#{automatic-rename}",
+        )
+    )
+    windows = []
+    for line in run([TMUX, "list-windows", "-a", "-F", fmt]).splitlines():
+        fields = (line.split("\t") + [""] * 5)[:5]
+        windows.append(
+            dict(
+                zip(
+                    ("session", "window_index", "name", "layout", "automatic_rename"),
+                    fields,
+                )
+            )
+        )
+    return windows
+
+
 def snapshot_locked() -> int:
     records = detect()
     resolved = [record for record in records if record["session_id"]]
@@ -669,16 +702,22 @@ def snapshot_locked() -> int:
         "codex_panes": agent_counts["codex"],
         "resolved": len(resolved),
         "panes": records,
+        "windows": capture_windows(),
     }
     stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     history_path = os.path.join(STATE_DIR, f"manifest-{stamp}.json")
     atomic_json_write(history_path, manifest)
     atomic_json_write(LATEST, manifest)
 
+    # Age-based retention with a count floor: the manifest that matters is the
+    # one written just before a disaster, and you may not notice the loss for
+    # days — count-based pruning would evict it within hours of normal uptime.
     history = sorted(glob.glob(os.path.join(STATE_DIR, "manifest-*.json")))
+    cutoff = time.time() - KEEP_DAYS * 86400
     for old in history[:-KEEP_HISTORY]:
         try:
-            os.remove(old)
+            if os.path.getmtime(old) < cutoff:
+                os.remove(old)
         except OSError:
             pass
 
@@ -800,11 +839,22 @@ def restore(dry: bool = False) -> int:
         return 0
 
     if not dry:
+        # Pin the manifest this restore acted on. Later snapshots overwrite
+        # latest.json with whatever the workspace looks like *afterwards* — if
+        # the layout came back truncated, the pre-crash truth would otherwise
+        # survive only in timestamped history. The pin keeps it at a known
+        # path: rerun with AGENT_SESSIONS_MANIFEST=restored-from.json after
+        # recovering the layout.
+        try:
+            shutil.copy(LATEST, os.path.join(STATE_DIR, "restored-from.json"))
+        except OSError as exc:
+            print(f"[restore] could not pin manifest: {exc}")
         time.sleep(SETTLE_SECONDS)
 
     resumed = {"claude": 0, "codex": 0}
     fresh = {"claude": 0, "codex": 0}
     skipped = 0
+    missing = 0  # recorded panes with no home in the restored layout
     watch_targets: list[str] = []  # Claude panes we resumed; only they get the menu
     for record in panes:
         # Version-1 manifests contained only Claude records and no agent field.
@@ -820,7 +870,7 @@ def restore(dry: bool = False) -> int:
                 f"{record['session']}:{record['window_index']}.{record['pane_index']} "
                 f"{record.get('title', '')[:40]}"
             )
-            skipped += 1
+            missing += 1
             continue
 
         state = pane_state(target)
@@ -865,8 +915,16 @@ def restore(dry: bool = False) -> int:
         f"[restore] {verb} {resumed_total + fresh_total} "
         f"({resumed_total} resumed: {resumed['claude']} Claude, "
         f"{resumed['codex']} Codex; {fresh_total} fresh), "
-        f"skipped {skipped} (already running or unavailable)"
+        f"skipped {skipped} (already running), {missing} not found"
     )
+    if missing:
+        print(
+            f"[restore] WARNING: {missing} recorded agent panes had no home in "
+            "the restored layout — the layout is likely truncated. After "
+            "recovering it (see save-check / newest healthy save), rerun: "
+            f"AGENT_SESSIONS_MANIFEST={os.path.join(STATE_DIR, 'restored-from.json')} "
+            "claude-sessions.py restore"
+        )
     if not dry and watch_targets and RESUME_CHOICE != "off":
         answered = answer_resume_prompts(watch_targets, RESUME_CHOICE)
         if answered:
