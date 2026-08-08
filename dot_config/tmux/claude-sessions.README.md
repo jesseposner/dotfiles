@@ -48,8 +48,41 @@ Note: tmux does not auto-start at login unless `@continuum-boot 'on'` is set
   `codex resume <id>`.
 - If a recorded transcript no longer exists, restore starts that agent fresh
   rather than handing it a dead resume id.
+- Claude Code >= 2.1.226 shows an interactive "resume from summary or full?"
+  menu when resuming an old or large session; a restored pane blocks there
+  until answered. After launching, restore watches exactly the Claude panes it
+  resumed and confirms the menu on each as it appears (panes load transcripts
+  at very different speeds, so this polls for up to `AGENT_PROMPT_TIMEOUT`
+  seconds, default 180). `AGENT_RESUME_CHOICE` picks the answer: `summary`
+  (default), `full`, or `off` to disable the watcher. Detection requires both
+  menu markers on the visible screen, so ordinary scrollback cannot trigger it.
+- `claude-sessions.py answer-prompts` is the same sweep as a manual command,
+  for panes launched outside the hook:
+  `answer-prompts [--choice summary|full] [--timeout N] [--targets %1,%2]`
+  (default: all live Claude panes except the one running the command).
 - Version-1 Claude-only manifests remain restorable; a record without an
   `agent` field is treated as Claude.
+
+### Save integrity alarm
+
+resurrect's window and state dumps fork subprocesses per window; on a
+degrading machine (fork failures, memory pressure) those sections vanish
+silently while pane lines survive. Such a save restores panes without window
+names or layouts — and the corruption itself is an early warning that the
+machine is hours from falling over (observed 2026-08-06: saves lost their
+window/state sections at 18:46, the machine died overnight).
+
+Since snapshot runs in lockstep with every resurrect save, it validates the
+save it just paired with: a `last` symlink that is missing or broken, or a
+save with pane lines but no `window`/`state` lines, logs a
+`[save-check] WARNING` to hook.log and flashes a 15-second tmux status
+message. Healthy saves are silent. `AGENT_RESURRECT_DIR` overrides the
+directory for testing; otherwise `@resurrect-dir`, `~/.tmux/resurrect`, and
+the XDG default are tried in resurrect's own order.
+
+If the alarm fires repeatedly: your labels/layouts are still safe in the last
+healthy save (they can be grafted onto a restored layout later), but treat the
+machine as unstable — commit work and reboot on your terms.
 
 ### Exact session-id detection (the hard part)
 
@@ -99,6 +132,7 @@ sessions.
     python3 ~/.config/tmux/claude-sessions.py list
     python3 ~/.config/tmux/claude-sessions.py snapshot
     python3 ~/.config/tmux/claude-sessions.py restore --dry-run
+    python3 ~/.config/tmux/claude-sessions.py answer-prompts --timeout 30
     AGENT_SESSIONS_MANIFEST=/tmp/x.json python3 ~/.config/tmux/claude-sessions.py restore --dry-run
     AGENT_RESTORE_STAGGER=0.4 python3 ~/.config/tmux/claude-sessions.py restore
 

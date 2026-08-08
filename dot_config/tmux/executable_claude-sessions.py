@@ -68,6 +68,17 @@ STAGGER_SECONDS = float(
         os.environ.get("CLAUDE_RESTORE_STAGGER", "0.4"),
     )
 )
+# Claude Code >= 2.1.226 interposes an interactive "resume from summary or
+# full?" menu when resuming an old or large session; a restored pane blocks
+# there until answered. "summary" and "full" pick that option; "off" disables
+# the watcher entirely.
+RESUME_CHOICE = os.environ.get("AGENT_RESUME_CHOICE", "summary")
+PROMPT_TIMEOUT = float(os.environ.get("AGENT_PROMPT_TIMEOUT", "180"))
+PROMPT_POLL_SECONDS = 3.0
+# Both must be on screen before a pane is judged to be sitting at the menu; a
+# single marker can appear in ordinary scrollback (for example a pane that
+# printed this script's own output).
+RESUME_PROMPT_MARKERS = ("Resume from summary", "Enter to confirm")
 
 UUID_RE = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 UUID_PATTERN = re.compile(rf"^{UUID_RE}$")
@@ -488,6 +499,77 @@ def codex_hook() -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Resurrect save validation
+# --------------------------------------------------------------------------- #
+def resurrect_dir_path() -> str:
+    """Mirror tmux-resurrect's directory resolution."""
+    override = os.environ.get("AGENT_RESURRECT_DIR")
+    if override:
+        return override
+    configured = run([TMUX, "show-option", "-gqv", "@resurrect-dir"]).strip()
+    if configured:
+        return os.path.expandvars(os.path.expanduser(configured))
+    legacy = os.path.join(HOME, ".tmux", "resurrect")
+    if os.path.isdir(legacy):
+        return legacy
+    xdg = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local", "share")
+    return os.path.join(xdg, "tmux", "resurrect")
+
+
+def check_resurrect_save() -> None:
+    """Alarm early when the machine is writing corrupt resurrect saves.
+
+    resurrect's window and state dumps fork subprocesses per window; on a
+    degrading machine (fork failures, memory pressure) those sections vanish
+    silently while pane lines survive. Such a save restores panes without
+    window names or layouts — and the degradation itself is an early warning
+    that the machine is hours from falling over. Snapshot runs in lockstep
+    with every save, so validate the save it just paired with.
+    """
+    directory = resurrect_dir_path()
+    last = os.path.join(directory, "last")
+    problem = None
+    if not os.path.islink(last) and not os.path.exists(last):
+        if glob.glob(os.path.join(directory, "tmux_resurrect_*.txt")):
+            problem = "saves exist but the `last` symlink is missing"
+        else:
+            return  # no resurrect saves yet; nothing to validate
+    else:
+        target = os.path.realpath(last)
+        if not os.path.exists(target):
+            problem = f"`last` symlink is broken ({os.path.basename(target)} missing)"
+        else:
+            counts = {"pane": 0, "window": 0, "state": 0}
+            try:
+                with open(target, errors="replace") as fh:
+                    for line in fh:
+                        kind = line.split("\t", 1)[0]
+                        if kind in counts:
+                            counts[kind] += 1
+            except OSError as exc:
+                problem = f"cannot read save {os.path.basename(target)}: {exc}"
+            else:
+                if counts["pane"] and not (counts["window"] and counts["state"]):
+                    problem = (
+                        f"save {os.path.basename(target)} is degraded "
+                        f"(panes={counts['pane']} windows={counts['window']} "
+                        f"state={counts['state']}) — window names/layouts not "
+                        "captured; the machine may be shedding processes"
+                    )
+    if problem:
+        print(f"[save-check] WARNING: {problem}")
+        subprocess.run(
+            [
+                TMUX,
+                "display-message",
+                "-d",
+                "15000",
+                f"⚠ claude-sessions: {problem}",
+            ]
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Snapshot
 # --------------------------------------------------------------------------- #
 def snapshot() -> int:
@@ -547,6 +629,7 @@ def snapshot_locked() -> int:
     if unresolved:
         message += f" ({unresolved} unresolved)"
     print(message)
+    check_resurrect_save()
     return 0
 
 
@@ -605,6 +688,44 @@ def transcript_for(record: dict, agent: str, session_id: str | None) -> str | No
     return None
 
 
+def answer_resume_prompts(
+    targets: list[str],
+    choice: str = "summary",
+    timeout: float = PROMPT_TIMEOUT,
+    poll: float = PROMPT_POLL_SECONDS,
+) -> list[str]:
+    """Watch panes for Claude's resume-mode menu and confirm `choice` on each.
+
+    Panes reach the menu at very different speeds (each loads its transcript
+    first), so this polls until every watched pane has been answered or the
+    timeout lapses. A pane that resumes without ever showing the menu simply
+    stays pending until timeout; the polling is cheap. Returns the targets
+    that were answered.
+    """
+    pending = dict.fromkeys(targets)
+    answered: list[str] = []
+    deadline = time.monotonic() + timeout
+    while pending and time.monotonic() < deadline:
+        for target in list(pending):
+            result = subprocess.run(
+                [TMUX, "capture-pane", "-p", "-t", target],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                del pending[target]  # pane disappeared
+                continue
+            screen = result.stdout
+            if all(marker in screen for marker in RESUME_PROMPT_MARKERS):
+                keys = ["Down", "Enter"] if choice == "full" else ["Enter"]
+                subprocess.run([TMUX, "send-keys", "-t", target, *keys])
+                answered.append(target)
+                del pending[target]
+        if pending:
+            time.sleep(poll)
+    return answered
+
+
 def restore(dry: bool = False) -> int:
     if not os.path.exists(LATEST):
         print(f"[restore] no manifest at {LATEST}; nothing to do")
@@ -622,6 +743,7 @@ def restore(dry: bool = False) -> int:
     resumed = {"claude": 0, "codex": 0}
     fresh = {"claude": 0, "codex": 0}
     skipped = 0
+    watch_targets: list[str] = []  # Claude panes we resumed; only they get the menu
     for record in panes:
         # Version-1 manifests contained only Claude records and no agent field.
         agent = record.get("agent", "claude")
@@ -670,6 +792,8 @@ def restore(dry: bool = False) -> int:
             continue
 
         subprocess.run([TMUX, "send-keys", "-t", target, "--", command, "Enter"])
+        if agent == "claude" and transcript:
+            watch_targets.append(target)
         time.sleep(STAGGER_SECONDS)
 
     resumed_total = sum(resumed.values())
@@ -681,6 +805,13 @@ def restore(dry: bool = False) -> int:
         f"{resumed['codex']} Codex; {fresh_total} fresh), "
         f"skipped {skipped} (already running or unavailable)"
     )
+    if not dry and watch_targets and RESUME_CHOICE != "off":
+        answered = answer_resume_prompts(watch_targets, RESUME_CHOICE)
+        if answered:
+            print(
+                f"[restore] answered resume-mode menu ({RESUME_CHOICE}) "
+                f"on {len(answered)} Claude panes"
+            )
     return 0
 
 
@@ -703,6 +834,41 @@ def list_live() -> int:
     return 0
 
 
+def answer_prompts_cmd(argv: list[str]) -> int:
+    """Manual sweep: answer the resume-mode menu on live Claude panes."""
+    choice = RESUME_CHOICE if RESUME_CHOICE != "off" else "summary"
+    timeout = 60.0
+    targets: list[str] = []
+    it = iter(argv)
+    for arg in it:
+        if arg == "--choice":
+            choice = next(it, choice)
+        elif arg == "--timeout":
+            timeout = float(next(it, timeout))
+        elif arg == "--targets":
+            targets = [t for t in (next(it, "") or "").split(",") if t]
+    if choice not in ("summary", "full"):
+        print(f"[answer-prompts] invalid choice: {choice}")
+        return 2
+    if not targets:
+        own_pane = os.environ.get("TMUX_PANE")
+        targets = [
+            pane["pane_id"]
+            for pane in tmux_panes()
+            if (VERSION_RE.match(pane["command"]) or pane["command"] == "claude")
+            and pane["pane_id"] != own_pane
+        ]
+    if not targets:
+        print("[answer-prompts] no Claude panes found")
+        return 0
+    answered = answer_resume_prompts(targets, choice, timeout)
+    print(
+        f"[answer-prompts] answered ({choice}) on "
+        f"{len(answered)}/{len(targets)} watched panes"
+    )
+    return 0
+
+
 def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else "list"
     if command == "snapshot":
@@ -713,10 +879,13 @@ def main() -> int:
         return list_live()
     if command == "codex-hook":
         return codex_hook()
+    if command == "answer-prompts":
+        return answer_prompts_cmd(sys.argv[2:])
     print(__doc__)
     print(
         f"usage: {os.path.basename(sys.argv[0])} "
-        "{snapshot|restore [--dry-run]|list|codex-hook}"
+        "{snapshot|restore [--dry-run]|list|codex-hook|"
+        "answer-prompts [--choice summary|full] [--timeout N] [--targets a,b]}"
     )
     return 2
 
