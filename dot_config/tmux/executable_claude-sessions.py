@@ -822,6 +822,20 @@ def answer_resume_prompts(
                 subprocess.run([TMUX, "send-keys", "-t", target, *keys])
                 answered.append(target)
                 del pending[target]
+                # Summarized lanes lose context silently; leave a manifest of
+                # which ones, so "did the reboot lobotomize anything I care
+                # about?" is a grep instead of a memory exercise.
+                where = run(
+                    [
+                        TMUX,
+                        "display-message",
+                        "-p",
+                        "-t",
+                        target,
+                        "#{session_name}:#{window_index} #{window_name} — #{pane_title}",
+                    ]
+                ).strip()
+                print(f"[answer-prompts] {choice}: {target} {where[:90]}")
         if pending:
             time.sleep(poll)
     return answered
