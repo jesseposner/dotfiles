@@ -516,15 +516,63 @@ def resurrect_dir_path() -> str:
     return os.path.join(xdg, "tmux", "resurrect")
 
 
-def check_resurrect_save() -> None:
-    """Alarm early when the machine is writing corrupt resurrect saves.
+def save_section_counts(path: str) -> dict[str, int] | None:
+    counts = {"pane": 0, "window": 0, "state": 0}
+    try:
+        with open(path, errors="replace") as fh:
+            for line in fh:
+                kind = line.split("\t", 1)[0]
+                if kind in counts:
+                    counts[kind] += 1
+    except OSError:
+        return None
+    return counts
 
-    resurrect's window and state dumps fork subprocesses per window; on a
-    degrading machine (fork failures, memory pressure) those sections vanish
-    silently while pane lines survive. Such a save restores panes without
-    window names or layouts — and the degradation itself is an early warning
-    that the machine is hours from falling over. Snapshot runs in lockstep
-    with every save, so validate the save it just paired with.
+
+def save_is_structurally_healthy(counts: dict[str, int] | None) -> bool:
+    """Sections are dumped panes -> windows -> state, so a save that still has
+    its trailing state line was written to completion; a missing tail means
+    the dump was cut off mid-write."""
+    return bool(counts and counts["pane"] and counts["window"] and counts["state"])
+
+
+def newest_healthy_save(directory: str) -> str | None:
+    saves = glob.glob(os.path.join(directory, "tmux_resurrect_*.txt"))
+    for path in sorted(saves, reverse=True):
+        if save_is_structurally_healthy(save_section_counts(path)):
+            return path
+    return None
+
+
+def repoint_last(last: str, healthy: str) -> None:
+    tmp = f"{last}.{os.getpid()}.tmp"
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
+    os.symlink(os.path.basename(healthy), tmp)
+    os.replace(tmp, last)
+
+
+def check_resurrect_save(live_agent_panes: int = 0) -> None:
+    """Guard `last` against corrupt resurrect saves; alarm as a side effect.
+
+    resurrect's dumps run as forked subprocesses; on a constrained machine
+    (dark-wake windows, dying battery, memory pressure) their output truncates
+    silently while the save still advances the `last` symlink — burying the
+    newest good save under corrupt ones precisely when nobody is watching
+    (observed 2026-08-06: 16 hours of clamshell dark wakes wrote saves that
+    shrank from 251 panes to 6 while 112 agent panes were provably alive).
+
+    Snapshot runs in lockstep with every save, so validate the save it just
+    paired with, two ways: structurally (a complete save ends with its state
+    line), and against this snapshot's own independent count of live agent
+    panes (a save claiming fewer total panes than there are live agent panes
+    is lying, even if structurally complete). On failure, repoint `last` to
+    the newest healthy save — the restore path then ignores the corrupt data
+    with no one at the keyboard — and leave degraded files on disk for
+    forensics. The alarm still fires for the attended case; /orient surfaces
+    hook.log warnings for the unattended one.
     """
     directory = resurrect_dir_path()
     last = os.path.join(directory, "last")
@@ -539,34 +587,48 @@ def check_resurrect_save() -> None:
         if not os.path.exists(target):
             problem = f"`last` symlink is broken ({os.path.basename(target)} missing)"
         else:
-            counts = {"pane": 0, "window": 0, "state": 0}
-            try:
-                with open(target, errors="replace") as fh:
-                    for line in fh:
-                        kind = line.split("\t", 1)[0]
-                        if kind in counts:
-                            counts[kind] += 1
-            except OSError as exc:
-                problem = f"cannot read save {os.path.basename(target)}: {exc}"
-            else:
-                if counts["pane"] and not (counts["window"] and counts["state"]):
-                    problem = (
-                        f"save {os.path.basename(target)} is degraded "
-                        f"(panes={counts['pane']} windows={counts['window']} "
-                        f"state={counts['state']}) — window names/layouts not "
-                        "captured; the machine may be shedding processes"
-                    )
-    if problem:
-        print(f"[save-check] WARNING: {problem}")
-        subprocess.run(
-            [
-                TMUX,
-                "display-message",
-                "-d",
-                "15000",
-                f"⚠ claude-sessions: {problem}",
-            ]
-        )
+            counts = save_section_counts(target)
+            name = os.path.basename(target)
+            if counts is None:
+                problem = f"cannot read save {name}"
+            elif counts["pane"] and not save_is_structurally_healthy(counts):
+                problem = (
+                    f"save {name} is degraded (panes={counts['pane']} "
+                    f"windows={counts['window']} state={counts['state']}) — "
+                    "cut off mid-write; the machine may be resource-constrained"
+                )
+            elif (
+                live_agent_panes
+                and counts["pane"] < live_agent_panes
+                # Only meaningful for the save written in lockstep with this
+                # snapshot; an older save is allowed to predate workspace
+                # growth.
+                and time.time() - os.path.getmtime(target) < 120
+            ):
+                problem = (
+                    f"save {name} has a truncated pane list "
+                    f"({counts['pane']} panes recorded, {live_agent_panes} "
+                    "agent panes live right now)"
+                )
+    if not problem:
+        return
+
+    healthy = newest_healthy_save(directory)
+    if healthy and os.path.realpath(last) != os.path.realpath(healthy):
+        repoint_last(last, healthy)
+        problem += f"; repointed last -> {os.path.basename(healthy)}"
+    elif not healthy:
+        problem += "; NO healthy save available to fall back to"
+    print(f"[save-check] WARNING: {problem}")
+    subprocess.run(
+        [
+            TMUX,
+            "display-message",
+            "-d",
+            "15000",
+            f"⚠ claude-sessions: {problem}",
+        ]
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -629,7 +691,7 @@ def snapshot_locked() -> int:
     if unresolved:
         message += f" ({unresolved} unresolved)"
     print(message)
-    check_resurrect_save()
+    check_resurrect_save(live_agent_panes=len(records))
     return 0
 
 

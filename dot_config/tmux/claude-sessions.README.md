@@ -63,26 +63,47 @@ Note: tmux does not auto-start at login unless `@continuum-boot 'on'` is set
 - Version-1 Claude-only manifests remain restorable; a record without an
   `agent` field is treated as Claude.
 
-### Save integrity alarm
+### Save integrity guard
 
-resurrect's window and state dumps fork subprocesses per window; on a
-degrading machine (fork failures, memory pressure) those sections vanish
-silently while pane lines survive. Such a save restores panes without window
-names or layouts — and the corruption itself is an early warning that the
-machine is hours from falling over (observed 2026-08-06: saves lost their
-window/state sections at 18:46, the machine died overnight).
+resurrect's dumps run as forked subprocesses; on a constrained machine their
+output truncates silently while the save still advances the `last` symlink —
+burying the newest good save under corrupt ones precisely when nobody is
+watching. Observed 2026-08-06: the lid was closed on 20% battery and 16 hours
+of dark-wake cycles wrote saves that shrank from 251 panes to 6 (first losing
+their window/state sections, then most of the pane list) while the manifest
+proved 112 agent panes were alive the whole time.
 
 Since snapshot runs in lockstep with every resurrect save, it validates the
-save it just paired with: a `last` symlink that is missing or broken, or a
-save with pane lines but no `window`/`state` lines, logs a
-`[save-check] WARNING` to hook.log and flashes a 15-second tmux status
-message. Healthy saves are silent. `AGENT_RESURRECT_DIR` overrides the
-directory for testing; otherwise `@resurrect-dir`, `~/.tmux/resurrect`, and
-the XDG default are tried in resurrect's own order.
+save it just paired with, two ways:
 
-If the alarm fires repeatedly: your labels/layouts are still safe in the last
-healthy save (they can be grafted onto a restored layout later), but treat the
-machine as unstable — commit work and reboot on your terms.
+- **Structural**: sections are dumped panes -> windows -> state, so a
+  complete save ends with its state line; a missing tail means the dump was
+  cut off mid-write. Also catches a missing or broken `last` symlink.
+- **Cross-check**: snapshot independently counts live agent panes from `ps`;
+  a fresh save claiming fewer total panes than there are live agent panes is
+  lying even if structurally complete. (Applied only to saves written within
+  the last two minutes — older saves are allowed to predate workspace
+  growth.)
+
+On structural failure, the guard **repoints `last` to the newest structurally
+healthy save**, so the post-reboot restore ignores the corrupt data with no
+one at the keyboard; degraded files stay on disk for forensics. On a
+cross-check failure it warns without repointing (an older save is not more
+truthful about the current workspace; the next healthy save self-corrects).
+Either way it logs a `[save-check] WARNING` to hook.log and flashes a
+15-second tmux status message for the attended case. Healthy saves are
+silent. /orient greps hook.log for warnings since the last session — that is
+the channel that works when the failure happened with the lid closed.
+
+The manifest side needs no guard: manifest writes are atomic (temp file +
+rename), so they cannot be truncated into lies, and 30 timestamped manifests
+are kept. In the 2026-08-06 incident the manifests kept resolving 112/112
+panes on 1% battery and became the gold source for recovery — which is why
+snapshots are never skipped on low battery.
+
+`AGENT_RESURRECT_DIR` overrides the directory for testing; otherwise
+`@resurrect-dir`, `~/.tmux/resurrect`, and the XDG default are tried in
+resurrect's own order.
 
 ### Exact session-id detection (the hard part)
 
